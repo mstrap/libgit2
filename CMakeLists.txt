@@ -464,7 +464,8 @@ ELSE ()
 	ENDIF()
 
 	IF (WIN32 AND NOT CYGWIN)
-		SET(CMAKE_C_FLAGS_DEBUG "-D_DEBUG")
+		# Only append to ${CMAKE_C_FLAGS_DEBUG} to allow additional flags be passed in from command line
+		SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_DEBUG")
 	ENDIF ()
 
 	IF (MINGW) # MinGW always does PIC and complains if we tell it to
