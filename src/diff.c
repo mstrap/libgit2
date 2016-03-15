@@ -4,6 +4,7 @@
  * This file is part of libgit2, distributed under the GNU GPL v2 with
  * a Linking Exception. For full terms see the included COPYING file.
  */
+#include <git2/diff.h>
 #include "common.h"
 #include "diff.h"
 #include "fileops.h"
@@ -1004,6 +1005,8 @@ static int handle_unmatched_new_item(
 	git_delta_t delta_type = GIT_DELTA_UNTRACKED;
 	bool contains_oitem;
 
+	printf("handle_unmatched_new_item: %s\n", info->nitem->path);
+
 	/* check if this is a prefix of the other side */
 	contains_oitem = entry_is_prefixed(diff, info->oitem, nitem);
 
@@ -1163,6 +1166,8 @@ static int handle_unmatched_old_item(
 	git_delta_t delta_type = GIT_DELTA_DELETED;
 	int error;
 
+	printf("handle_unmatched_old_item: %s\n", info->oitem->path);
+
 	/* update delta_type if this item is conflicted */
 	if (git_index_entry_is_conflict(info->oitem))
 		delta_type = GIT_DELTA_CONFLICTED;
@@ -1199,6 +1204,8 @@ static int handle_matched_item(
 	git_diff *diff, diff_in_progress *info)
 {
 	int error = 0;
+
+	printf("handle_matched_item: %s\n", info->nitem->path);
 
 	if ((error = maybe_modified(diff, info)) < 0)
 		return error;
@@ -1358,7 +1365,8 @@ int git_diff_tree_to_index(
 	const git_diff_options *opts)
 {
 	git_iterator_flag_t iflag = GIT_ITERATOR_DONT_IGNORE_CASE |
-		GIT_ITERATOR_INCLUDE_CONFLICTS;
+	                            GIT_ITERATOR_INCLUDE_CONFLICTS |
+	                            ((opts->flags & GIT_DIFF_OPT_DONT_RECURSE) ? GIT_ITERATOR_PATHLIST_NON_RECURSIVE : 0);
 	bool index_ignore_case = false;
 	int error = 0;
 
@@ -1396,10 +1404,10 @@ int git_diff_index_to_workdir(
 
 	DIFF_FROM_ITERATORS(
 		git_iterator_for_index(&a, repo, index, &a_opts),
-		GIT_ITERATOR_INCLUDE_CONFLICTS,
+		GIT_ITERATOR_INCLUDE_CONFLICTS | (opts->flags & GIT_DIFF_OPT_DONT_RECURSE ? GIT_ITERATOR_PATHLIST_NON_RECURSIVE : 0),
 
 		git_iterator_for_workdir(&b, repo, index, NULL, &b_opts),
-		GIT_ITERATOR_DONT_AUTOEXPAND
+		GIT_ITERATOR_DONT_AUTOEXPAND | (opts->flags & GIT_DIFF_OPT_DONT_RECURSE ? GIT_ITERATOR_PATHLIST_NON_RECURSIVE : 0)
 	);
 
 	if (!error && DIFF_FLAG_IS_SET(*diff, GIT_DIFF_UPDATE_INDEX) && (*diff)->index_updated)

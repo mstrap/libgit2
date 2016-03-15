@@ -99,6 +99,8 @@ static iterator_pathlist__match_t iterator_pathlist__match(
 	size_t idx;
 	int error;
 
+	printf("iterator_pathlist__match: %s\n", path);
+
 	error = git_vector_bsearch2(&idx, &iter->pathlist,
 		(git_vector_cmp)iter->strcomp, path);
 
@@ -147,10 +149,12 @@ static void iterator_pathlist_walk__reset(git_iterator *iter)
  */
 static bool iterator_pathlist_walk__contains(git_iterator *iter, const char *path)
 {
-	size_t i;
+	size_t i, i2;
 	char *p;
-	size_t p_len;
+	size_t p_len, path_len;
 	int cmp;
+
+	printf("iterator_pathlist_walk__contains: %s\n", path);
 
 	for (i = iter->pathlist_walk_idx; i < iter->pathlist.length; i++) {
 		p = iter->pathlist.contents[i];
@@ -164,15 +168,34 @@ static bool iterator_pathlist_walk__contains(git_iterator *iter, const char *pat
 			iter->pathlist_walk_idx++;
 
 		/* this pathlist sorts after the given path, no match. */
-		else if (cmp > 0)
+		else if (cmp > 0) {
+			printf("  false\n");
 			return false;
+		}
 
 		/* match!  an exact match (`foo` vs `foo`), the path is a child of an
 		 * explicit directory in the pathlist (`foo/` vs `foo/bar`) or the path
 		 * is a child of an entry in the pathlist (`foo` vs `foo/bar`)
 		 */
-		else if (path[p_len] == '\0' || p[p_len - 1] == '/' || path[p_len] == '/')
+		else if (path[p_len] == '\0') {
+			printf("  true\n");
 			return true;
+		}
+
+		else if (p[p_len - 1] == '/' || path[p_len] == '/') {
+			path_len = strlen(path);
+			boolean grandchild = false;
+			for (i2 = p_len + 1; i2 < path_len; i2++)
+				if (path[i2] == '/') {
+					grandchild = true;
+					break;
+				}
+			if (grandchild && ((iter->flags & GIT_ITERATOR_PATHLIST_NON_RECURSIVE) != 0)) {
+				continue;
+			}
+			printf("  true\n");
+			return true;
+		}
 
 		/* only advance the start index for future callers if we know that we
 		 * will not see a child of this path.  eg, a pathlist entry `foo` is
@@ -185,6 +208,7 @@ static bool iterator_pathlist_walk__contains(git_iterator *iter, const char *pat
 			iter->pathlist_walk_idx++;
 	}
 
+	printf("  false\n");
 	return false;
 }
 
@@ -1091,6 +1115,8 @@ static int index_iterator__seek(git_iterator *self, const char *prefix)
 static int index_iterator__reset(
 	git_iterator *self, const char *start, const char *end)
 {
+	printf("index_iterator__reset\n");
+
 	index_iterator *ii = (index_iterator *)self;
 	const git_index_entry *ie;
 
@@ -1298,6 +1324,8 @@ static int dirload_with_stat(git_vector *contents, fs_iterator *fi)
 	iterator_pathlist__match_t pathlist_match = ITERATOR_PATHLIST_MATCH;
 	int error;
 
+	printf("dirload_with_stat: %s\n" , fi->path.ptr);
+
 	/* Any error here is equivalent to the dir not existing, skip over it */
 	if ((error = git_path_diriter_init(
 			&diriter, fi->path.ptr, fi->dirload_flags)) < 0) {
@@ -1331,9 +1359,9 @@ static int dirload_with_stat(git_vector *contents, fs_iterator *fi)
 		 * this path or children of this path.
 		 */
 		if (fi->base.pathlist.length &&
-			fi->pathlist_match != ITERATOR_PATHLIST_MATCH &&
-			fi->pathlist_match != ITERATOR_PATHLIST_MATCH_DIRECTORY &&
-			!(pathlist_match = iterator_pathlist__match(&fi->base, path, path_len)))
+		    fi->pathlist_match != ITERATOR_PATHLIST_MATCH &&
+		    fi->pathlist_match != ITERATOR_PATHLIST_MATCH_DIRECTORY &&
+		    !(pathlist_match = iterator_pathlist__match(&fi->base, path, path_len)))
 			continue;
 
 		/* Make sure to append two bytes, one for the path's null
@@ -1372,6 +1400,10 @@ static int dirload_with_stat(git_vector *contents, fs_iterator *fi)
 			/* Suffix directory paths with a '/' */
 			ps->path[ps->path_len++] = '/';
 			ps->path[ps->path_len] = '\0';
+
+			if ((fi->base.flags & GIT_ITERATOR_PATHLIST_NON_RECURSIVE) != 0 &&
+			    iterator_pathlist__match(&fi->base, ps->path, path_len) == ITERATOR_PATHLIST_NONE)
+				continue;
 		} else if(!S_ISREG(ps->st.st_mode) && !S_ISLNK(ps->st.st_mode)) {
 			/* Ignore wacky things in the filesystem */
 			git__free(ps);
@@ -1469,6 +1501,8 @@ static int fs_iterator__advance_into(
 {
 	int error = 0;
 	fs_iterator *fi = (fs_iterator *)iter;
+
+	printf("fs_iterator__advance_into: %s\n" , fi->path.ptr);
 
 	iterator__clear_entry(entry);
 

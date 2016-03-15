@@ -167,6 +167,10 @@ typedef enum {
 	/** Include unreadable files in the diff */
 	GIT_DIFF_INCLUDE_UNREADABLE_AS_UNTRACKED = (1u << 17),
 
+	/** TODO
+	 */
+	GIT_DIFF_OPT_DONT_RECURSE = (1u << 18),
+
 	/*
 	 * Options controlling how output will be generated
 	 */

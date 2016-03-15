@@ -36,6 +36,8 @@ typedef enum {
 	GIT_ITERATOR_PRECOMPOSE_UNICODE = (1u << 4),
 	/** include conflicts */
 	GIT_ITERATOR_INCLUDE_CONFLICTS = (1u << 5),
+	/** TODO */
+	GIT_ITERATOR_PATHLIST_NON_RECURSIVE = (1u << 6),
 } git_iterator_flag_t;
 
 typedef struct {
